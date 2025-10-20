@@ -1,0 +1,122 @@
+---
+title: "reading_data_from_the_web"
+author: "Kino Watanabe"
+date: "2025-10-09"
+output: html_document
+---
+
+
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(httr)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+```
+Import NSDOH data from the web
+```{r}
+url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+drug_use_html = read_html(url)
+
+drug_use_html
+```
+This is an "easy" case
+```{r}
+ndsuh_df = 
+drug_use_html |>
+  html_table() |> 
+  nth(1) |> 
+  slice(-1)
+```
+  * pulls every table in the url
+  * `slice` takes off specific rows
+      * “note” at the bottom of the table appears in every column in the first row
+  
+  * need to clean up "a, b, etc" and columns are encoding 2 different variables (age, year)
+  
+Slightly harder case
+
+```{r}
+swm_html = 
+  read_html("https://www.imdb.com/list/ls070150896/")
+```
+
+Now pull out the elements I care about -- use selector gadget 
+```{r}
+title_vec = 
+  swm_html |>
+  html_elements(".ipc-title-link-wrapper .ipc-title__text") |>
+  html_text()
+
+metascore_vec = 
+  swm_html |>
+  html_elements(".metacritic-score-box") |>
+  html_text()
+
+runtime_vec = 
+  swm_html |>
+  html_elements(".dli-title-metadata-item:nth-child(2)") |>
+  html_text()
+
+swm_df = 
+  tibble(
+    title = title_vec,
+    score = metascore_vec,
+    runtime = runtime_vec)
+```
+
+## APIs
+Get data from APIs
+
+NYC water consumption dataset
+```{r}
+nyc_water = 
+  GET("https://data.cityofnewyork.us/resource/ia2d-e54m.csv") |> 
+  content("parsed") 
+
+
+nyc_water |> 
+  ggplot(aes(x = year, y = nyc_consumption_million_gallons_per_day)) + 
+    geom_point()
+```
+
+```{r}
+brfss_smart2010 = 
+  GET("https://chronicdata.cdc.gov/resource/acme-vg9e.csv",
+      query = list("$limit" = 5000)) |> 
+  content("parsed")
+```
+* ` query = list ("app_token" = xxxxxxxxxxxx))`
+
+
+```{r}
+poke = 
+  GET("http://pokeapi.co/api/v2/pokemon/1") |>
+  content()
+
+poke[["name"]]
+```
+```{r}
+poke[["height"]]
+poke[["abilities"]]
+```
+
+```{r}
+
+```
+
