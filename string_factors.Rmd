@@ -131,7 +131,146 @@ as.numeric(vec_sex)
 ```
 
 
-## NSDUH
+## NSDUH -- strings
 ```{r}
+nsduh_url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
+
+table_marj = 
+  read_html(nsduh_url) |> 
+  html_table() |> 
+  first() |>
+  slice(-1)
+```
+
+```{r}
+data_marj = 
+  table_marj |>
+  select(-contains("P Value")) |> #don't need p-values
+  pivot_longer(
+    -State, #pivot everything except for in the state column
+    names_to = "age_year", 
+    values_to = "percent") |>
+  separate(age_year, into = c("age", "year"), sep = "\\(") |> #separate age_year
+  mutate(
+    year = str_replace(year, "\\)", ""),
+    percent = str_replace(percent, "[a-c]$", ""),
+    percent = as.numeric(percent)) |>
+  filter(!(State %in% c("Total U.S.", "Northeast", "Midwest", "South", "West"))) #take out geo that's not states
+```
+
+## NSDUH -- factors
+
+```{r}
+data_marj |>
+  filter(age == "12-17") |> 
+  mutate(State = fct_reorder(State, percent)) |> #start w char --> convert to factor --> reorder 
+  ggplot(aes(x = State, y = percent, color = year)) + 
+    geom_point() + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) #move x axis labels to 90 deg
+```
+## weather data
+
+```{r}
+data("weather_df")
+
+weather_df |>
+  mutate(name = forcats::fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |> 
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+```
+We could instead reorder name according to tmax values in each name using fct_reorder:
+
+```{r}
+weather_df |>
+  mutate(name = forcats::fct_reorder(name, tmax)) |> 
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_violin(aes(fill = name), color = "blue", alpha = .5) + 
+  theme(legend.position = "bottom")
+```
+linear regression: the ordering determines the “reference” category, and is something that can be adjusted as needed.
+
+```{r}
+weather_df |>
+  mutate(name = forcats::fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))) |> 
+  lm(tmax ~ name, data = _)
+
+weather_df |>
+  mutate(name = fct_reorder(name,tmax)) |> 
+  lm(tmax ~ name, data = _)
+```
+
+```{r}
+data("rest_inspec")
+
+rest_inspec = 
+    rest_inspec |> 
+    rename(borough = boro)
+
+rest_inspec |> 
+  group_by(borough, grade) |> 
+  summarize(n = n()) |> 
+  pivot_wider(names_from = grade, values_from = n)
+```
+
+
+```{r}
+rest_inspec =
+  rest_inspec |>
+  filter(grade %in% c("A", "B", "C"), borough != "Missing") |> 
+  mutate(borough = str_to_title(borough))
+```
+```{r}
+rest_inspec |> 
+  filter(str_detect(dba, "Pizza")) |> #match in str_detect is case-sensitive until we tell it not to be
+  group_by(borough, grade) |> 
+  summarize(n = n()) |> 
+  pivot_wider(names_from = grade, values_from = n)
+
+rest_inspec |> 
+  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |> 
+  group_by(borough, grade) |> 
+  summarize(n = n()) |> 
+  pivot_wider(names_from = grade, values_from = n)
+```
+
+
+Might help to have things in a different order – maybe number of pizza places? Fortunately this can be done using fct_infreq.
+
+```{r}
+rest_inspec |> 
+  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
+  ggplot(aes(x = borough, fill = grade)) + 
+  geom_bar() 
+```
+
+```{r}
+rest_inspec |> 
+  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
+  mutate(borough = fct_infreq(borough)) |>
+  ggplot(aes(x = borough, fill = grade)) + 
+  geom_bar() 
+```
+
+Suppose I want to rename a borough. I could try using str_replace.
+This renamed the borough, but then converted the result back to a string 
+```{r}
+rest_inspec |> 
+  filter(str_detect(dba, "[Pp][Ii][Zz][Zz][Aa]")) |>
+  mutate(
+    borough = fct_infreq(borough),
+    borough = str_replace(borough, "Manhattan", "The City")) |>
+  ggplot(aes(x = borough, fill = grade)) + 
+  geom_bar()
+```
+
+```{r}
+rest_inspec |> 
+  filter(str_detect(dba, regex("pizza", ignore_case = TRUE))) |>
+  mutate(
+    borough = fct_infreq(borough),
+    borough = fct_recode(borough, "The City" = "Manhattan")) |>
+  ggplot(aes(x = borough, fill = grade)) + 
+  geom_bar()
 ```
 
