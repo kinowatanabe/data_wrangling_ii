@@ -2,7 +2,7 @@
 title: "reading_data_from_the_web"
 author: "Kino Watanabe"
 date: "2025-10-09"
-output: html_document
+output: github_document
 ---
 
 
@@ -28,14 +28,25 @@ options(
 scale_colour_discrete = scale_colour_viridis_d
 scale_fill_discrete = scale_fill_viridis_d
 ```
-Import NSDOH data from the web
+
+# Import NSDOH data from the web
 ```{r}
 url = "http://samhda.s3-us-gov-west-1.amazonaws.com/s3fs-public/field-uploads/2k15StateFiles/NSDUHsaeShortTermCHG2015.htm"
 drug_use_html = read_html(url)
 
 drug_use_html
 ```
-This is an "easy" case
+### This is an "easy" case
+
+* `html_table()` pulls out everything in html that is marked as table
+
+```{r}
+ndsuh_df = 
+drug_use_html |>
+  html_table() |> 
+  first()
+```
+
 ```{r}
 ndsuh_df = 
 drug_use_html |>
@@ -49,14 +60,15 @@ drug_use_html |>
   
   * need to clean up "a, b, etc" and columns are encoding 2 different variables (age, year)
   
-Slightly harder case
+### Slightly harder case
 
+* none of this info is in tables --> **css selector**
 ```{r}
 swm_html = 
   read_html("https://www.imdb.com/list/ls070150896/")
 ```
 
-Now pull out the elements I care about -- use selector gadget 
+### Now pull out the elements I care about -- use selector gadget 
 ```{r}
 title_vec = 
   swm_html |>
@@ -80,7 +92,7 @@ swm_df =
     runtime = runtime_vec)
 ```
 
-## APIs
+# APIs
 Get data from APIs
 
 NYC water consumption dataset
@@ -104,6 +116,8 @@ brfss_smart2010 =
 * ` query = list ("app_token" = xxxxxxxxxxxx))`
 
 
+Pokemon data
+
 ```{r}
 poke = 
   GET("http://pokeapi.co/api/v2/pokemon/1") |>
@@ -114,9 +128,5 @@ poke[["name"]]
 ```{r}
 poke[["height"]]
 poke[["abilities"]]
-```
-
-```{r}
-
 ```
 
